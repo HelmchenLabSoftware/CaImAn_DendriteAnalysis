@@ -1,5 +1,38 @@
+import numpy as np
 from tifffile import imread, imsave
 from bokeh.models import HoverTool
+
+def mosaic_to_stack(tiff_file, n_planes, x_crop):
+    """
+    Convert movie with multiple planes as mosaic (TYX) to ImageJ hyperstack (TZCYXS order)
+    tif_file ... tiff file containing movie
+    n_planes ... number of planes in Y
+    x_crop ... number of pixels (>=1) or fraction (<1) to crop in x
+    """
+    
+    mov = imread(tiff_file)
+    
+    # check if the number of planes matches the shape of the movie
+    if mov.shape[1] % n_planes:
+        raise Exception('Number of rows in movie must be divisible by number of planes!')
+    rows_per_plane = int(mov.shape[1]/n_planes)
+    
+    if x_crop < 1:
+        x_crop = int(mov.shape[-1]*x_crop)
+    
+    # stack planes
+    plane_list = []
+    for ix in range(n_planes):
+        plane_list.append(mov[:,ix*rows_per_plane:(ix+1)*rows_per_plane,:x_crop])
+        plane_list[ix] = plane_list[ix][None, ...]
+        
+    stacked = np.vstack(tuple(plane_list)).swapaxes(0, 1)
+    # add dimension for channel
+    stacked = stacked[:,:,None,:,:]
+    
+    # write ImageJ HyperStack (TZCYXS order)
+    imsave(tiff_file.replace('.tif', '_stacked.tif'), stacked, imagej=True)
+
 
 def cropTif(fname, crop_pixel):
     """
