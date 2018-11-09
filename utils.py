@@ -8,6 +8,8 @@ def mosaic_to_stack(tiff_file, n_planes, x_crop):
     tif_file ... tiff file containing movie
     n_planes ... number of planes in Y
     x_crop ... number of pixels (>=1) or fraction (<1) to crop in x
+    
+    Returns: stacked TIFF file name
     """
     
     mov = imread(tiff_file)
@@ -28,10 +30,12 @@ def mosaic_to_stack(tiff_file, n_planes, x_crop):
         
     stacked = np.vstack(tuple(plane_list)).swapaxes(0, 1)
     # add dimension for channel
-    stacked = stacked[:,:,None,:,:]
+#     stacked = stacked[:,:,None,:,:]
     
     # write ImageJ HyperStack (TZCYXS order)
-    imsave(tiff_file.replace('.tif', '_stacked.tif'), stacked, imagej=True)
+    outfile = tiff_file.replace('.tif', '_stacked.tif')
+    imsave(outfile, stacked, imagej=True)
+    return outfile
 
 
 def cropTif(fname, crop_pixel):
