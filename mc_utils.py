@@ -55,12 +55,14 @@ def interpolateNans(frame, n=10):
     return frame_interp
 
 
-def computeMetrics(mc, bord_px_els, swap_dim, winsize, resize_fact_flow):
+def computeMetrics(mc, swap_dim, winsize, resize_fact_flow):
     """
     Compute the quality metrics for the registration.
     """
     
-    final_size = np.subtract(mc.total_template_els.shape, bord_px_els) # remove pixels in the boundaries
+    bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)), np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
+    
+    final_size = np.subtract(mc.total_template_els.shape, bord_px) # remove pixels in the boundaries
     
     tmpl_rig, corr_orig, flows_orig, norms_orig, crispness_orig = \
     cm.motion_correction.compute_metrics_motion_correction(mc.fname[0], final_size[0], final_size[1],
@@ -95,6 +97,16 @@ def computeMetrics(mc, bord_px_els, swap_dim, winsize, resize_fact_flow):
         'crispness_els': crispness_els,
         'norms_els': norms_els,
     }
+    
+    return metrics
+
+def computeMetricsWrapper(mc, swap_dim, winsize, resize_fact_flow):
+    """
+    Wrapper function for computeMetrics. Used to call computeMetrics for several mc in parallel using starmap.
+    
+    """
+    bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)), np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
+    metrics = computeMetrics(mc, bord_px, swap_dim, winsize, resize_fact_flow)
     
     return metrics
 
