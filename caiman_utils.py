@@ -1,25 +1,26 @@
+import numpy as np
 from caiman.source_extraction.cnmf import cnmf as cnmf
 from caiman.components_evaluation import estimate_components_quality_auto as estimate_auto
 
 
-def evaluate_components(images, A, C, b, f, YrA, frame_rate, decay_time, gSig, dims, dview, min_SNR, rval_thr,
-                        use_cnn, cnn_thr):
-    """
-    Run component evaluation and return indices of good and bad components.
+# def evaluateComponents(images, A, C, b, f, YrA, frame_rate, decay_time, gSig, dims, dview, min_SNR, rval_thr,
+#                         use_cnn, cnn_thr):
+#     """
+#     Run component evaluation and return indices of good and bad components.
 
-    :return:
-    """
+#     :return:
+#     """
 
-    # Component evaluation
-    idx_comps, idx_comps_bad, SNR_comp, r_values, cnn_preds = estimate_auto(images, A, C, b, f, YrA, frame_rate,
-                                                                            decay_time, gSig, dims, dview=dview,
-                                                                            min_SNR=min_SNR, r_values_min=rval_thr,
-                                                                            use_cnn=use_cnn, thresh_cnn_lowest=cnn_thr)
+#     # Component evaluation
+#     idx_comps, idx_comps_bad, SNR_comp, r_values, cnn_preds = estimate_auto(images, A, C, b, f, YrA, frame_rate,
+#                                                                             decay_time, gSig, dims, dview=dview,
+#                                                                             min_SNR=min_SNR, r_values_min=rval_thr,
+#                                                                             use_cnn=use_cnn, thresh_cnn_lowest=cnn_thr)
 
-    return idx_comps, idx_comps_bad, SNR_comp, r_values, cnn_preds
+#     return idx_comps, idx_comps_bad, SNR_comp, r_values, cnn_preds
 
 
-def run_cnmf_iterative(images, frame_rate, decay_time, dims, n_processes, K, gSig, merge_thresh, p, dview, rf,
+def runCNMFiterative(images, frame_rate, decay_time, dims, n_processes, K, gSig, merge_thresh, p, dview, rf,
                        stride_cnmf, init_method, alpha_snmf, gnb, method_deconvolution, min_SNR, rval_thr,
                        use_cnn, cnn_thr):
     """
@@ -60,7 +61,7 @@ def run_cnmf_iterative(images, frame_rate, decay_time, dims, n_processes, K, gSi
     return cnmf_1, idx_comps, idx_comps_bad
 
 
-def run_cnmf_single(images, frame_rate, decay_time, dims, n_processes, K, gSig, merge_thresh, p, dview, rf,
+def runCNMFsingle(images, frame_rate, decay_time, dims, n_processes, K, gSig, merge_thresh, p, dview, rf,
                     stride_cnmf, init_method, alpha_snmf, gnb, method_deconvolution, min_SNR, rval_thr, use_cnn,
                     cnn_thr):
     """
@@ -81,3 +82,19 @@ def run_cnmf_single(images, frame_rate, decay_time, dims, n_processes, K, gSig, 
 
     return cnmf_0, idx_comps, idx_comps_bad
 
+
+def getBadFramesByTrial(bad_frames, trial_index):
+    """
+    Todo: document
+    """
+
+    bad_frames_by_trial = dict()
+    for ix, i_bad in enumerate(bad_frames):
+        trial_index_bad = trial_index[bad_frames[ix]]
+        ix_from_trial_start = bad_frames[ix] - np.where(trial_index==trial_index[bad_frames[ix]])[0][0]
+        if trial_index_bad in bad_frames_by_trial:
+            bad_frames_by_trial[trial_index_bad] = bad_frames_by_trial[trial_index_bad] + [ix_from_trial_start]
+        else:
+            bad_frames_by_trial[trial_index_bad] = [ix_from_trial_start]
+    
+    return bad_frames_by_trial

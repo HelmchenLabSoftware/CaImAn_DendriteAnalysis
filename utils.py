@@ -2,7 +2,7 @@ import numpy as np
 from tifffile import imread, imsave
 from bokeh.models import HoverTool
 
-def mosaic_to_stack(tiff_file, n_planes, x_crop):
+def mosaicToStack(tiff_file, n_planes, x_crop):
     """
     Convert movie with multiple planes as mosaic (TYX) to ImageJ hyperstack (TZCYXS order)
     tif_file ... tiff file containing movie
