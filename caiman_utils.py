@@ -1,4 +1,6 @@
+import os, json
 import numpy as np
+import caiman as cm
 from caiman.source_extraction.cnmf import cnmf as cnmf
 from caiman.components_evaluation import estimate_components_quality_auto as estimate_auto
 
@@ -83,6 +85,29 @@ def runCNMFsingle(images, frame_rate, decay_time, dims, n_processes, K, gSig, me
     return cnmf_0, idx_comps, idx_comps_bad
 
 
+def loadData(fname):
+    """
+    
+    """
+    
+    Yr, dims, T = cm.load_memmap(fname)
+    d1, d2 = dims
+
+    # offset if movie is negative
+    if np.min(Yr) < 0:
+        Yr = Yr - np.min(Yr)
+
+    # if file is in F order, convert to C order (required for cnmf)
+    # TODO: check if this can be done more efficienctly by saving directly in C order
+    if np.isfortran(Yr):
+        Yr = np.ascontiguousarray(Yr)
+
+#     images = np.reshape(Yr.T, [T] + list(dims), order='F')
+#     Y = np.reshape(Yr, dims + (T,), order='F')
+    
+    return Yr, dims
+
+
 def getBadFramesByTrial(bad_frames, trial_index):
     """
     Todo: document
@@ -98,3 +123,33 @@ def getBadFramesByTrial(bad_frames, trial_index):
             bad_frames_by_trial[trial_index_bad] = [ix_from_trial_start]
     
     return bad_frames_by_trial
+
+
+def removeBadFrames(fname, trial_index, Yr, dims, remove_bad_frames, data_folder):
+    """
+    
+    """
+
+    bad_frames = np.array([])
+    bad_frames_by_trial = dict()
+    if remove_bad_frames:
+        bad_frames = json.load(open(fname.replace('.mmap','badFrames.json')))
+        bad_frames = np.array(bad_frames['frames'])
+        bad_frames_by_trial = getBadFramesByTrial(bad_frames, trial_index)
+        Yr = np.delete(Yr, bad_frames, axis=1)
+        trial_index = np.delete(trial_index, bad_frames, axis=0)
+        T = Yr.shape[1]
+        images = np.reshape(Yr.T, [T] + list(dims), order='F')
+        print(images.shape)
+        # make sure movie is not negative
+        add_to_movie = - np.min(images)
+        fname_new = cm.save_memmap([images], base_name=os.path.join(data_folder, 'removedFrames'), 
+                                   add_to_movie=add_to_movie, order='C')
+        Yr, dims, T = cm.load_memmap(fname_new)
+        images = np.reshape(Yr.T, [T] + list(dims), order='F')
+        Y = np.reshape(Yr, dims + (T,), order='F')
+        print('Deleted %1d frames. Saved to new file %s.' % (len(bad_frames), os.path.basename(fname_new)))
+        print('Deleted frames:')
+        print(bad_frames)
+        
+    return bad_frames, images, Y, fname_new
