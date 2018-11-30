@@ -25,6 +25,7 @@ def setupMC(fname, params):
                        upsample_factor_grid=params['upsample_factor_grid'], 
                        max_deviation_rigid=params['max_deviation_rigid'],
                        border_nan=params['border_nan'],
+                       pw_rigid=params['pw_rigid'],
                        shifts_opencv = True, 
                        nonneg_movie = False)
     return mc
@@ -55,29 +56,37 @@ def interpolateNans(frame, n=10):
     return frame_interp
 
 
-def computeMetrics(mc, swap_dim, winsize, resize_fact_flow):
+def computeMetrics(mc, swap_dim, winsize, resize_fact_flow, iterations):
     """
     Compute the quality metrics for the registration.
     """
     
-    bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)), np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
+    if mc.pw_rigid:
+        bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)),np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
+        final_size = np.subtract(mc.total_template_els.shape, bord_px) # remove pixels in the boundaries
+    else:
+        bord_px = np.ceil(np.max(mc.shifts_rig)).astype(np.int)
+        final_size = np.subtract(mc.total_template_rig.shape, bord_px) # remove pixels in the boundaries
     
-    final_size = np.subtract(mc.total_template_els.shape, bord_px) # remove pixels in the boundaries
+    
     
     tmpl_rig, corr_orig, flows_orig, norms_orig, crispness_orig = \
     cm.motion_correction.compute_metrics_motion_correction(mc.fname[0], final_size[0], final_size[1],
                                                            swap_dim, winsize=winsize, play_flow=False, 
-                                                           resize_fact_flow=resize_fact_flow)
+                                                           resize_fact_flow=resize_fact_flow, iterations=iterations)
 
     tmpl_rig, corr_rig, flows_rig, norms_rig, crispness_rig = \
     cm.motion_correction.compute_metrics_motion_correction(mc.fname_tot_rig[0], final_size[0], final_size[1],
                                                            swap_dim, winsize=winsize, play_flow=False, 
-                                                           resize_fact_flow=resize_fact_flow)
+                                                           resize_fact_flow=resize_fact_flow, iterations=iterations)
 
-    tmpl_els, corr_els, flows_els, norms_els, crispness_els = \
-    cm.motion_correction.compute_metrics_motion_correction(mc.fname_tot_els[0], final_size[0], final_size[1],
-                                                           swap_dim, winsize=winsize, play_flow=False, 
-                                                           resize_fact_flow=resize_fact_flow)
+    if mc.pw_rigid:
+        tmpl_els, corr_els, flows_els, norms_els, crispness_els = \
+        cm.motion_correction.compute_metrics_motion_correction(mc.fname_tot_els[0], final_size[0], final_size[1],
+                                                               swap_dim, winsize=winsize, play_flow=False, 
+                                                               resize_fact_flow=resize_fact_flow, iterations=iterations)
+    else:
+        tmpl_els = corr_els = flows_els = norms_els = crispness_els = None
     
     metrics = {
         'tmpl_rig': tmpl_rig,
@@ -97,16 +106,6 @@ def computeMetrics(mc, swap_dim, winsize, resize_fact_flow):
         'crispness_els': crispness_els,
         'norms_els': norms_els,
     }
-    
-    return metrics
-
-def computeMetricsWrapper(mc, swap_dim, winsize, resize_fact_flow):
-    """
-    Wrapper function for computeMetrics. Used to call computeMetrics for several mc in parallel using starmap.
-    
-    """
-    bord_px = np.ceil(np.maximum(np.max(np.abs(mc.x_shifts_els)), np.max(np.abs(mc.y_shifts_els)))).astype(np.int)
-    metrics = computeMetrics(mc, bord_px, swap_dim, winsize, resize_fact_flow)
     
     return metrics
 
@@ -193,6 +192,56 @@ def runMotionCorrection(fname, params):
     imsave(mc.fname_tot_rig[0].replace('.mmap','.tif'), cm.load(mc.fname_tot_rig[0]))
     
     return mc
+
+
+def printMetrics(corr_mean, corr_min, crispness, norms):
+    """
+    Todo: document me
+    
+    """
+    if len(corr_mean) == 3:
+        if corr_mean[0] > corr_mean[1] or corr_mean[0] > corr_mean[2]:
+            print('\x1b[1;03;31m' + 'Mean corr - raw / rigid / pw_rigid: ' + str(['{:.2f}'.format(i) for i in corr_mean]) + '\x1b[0m')
+        else:
+            print('Mean corr - raw / rigid / pw_rigid: ' + str(['{:.2f}'.format(i) for i in corr_mean]))
+
+        if corr_min[0] > corr_min[1] or corr_min[0] > corr_min[2]:
+            print('\x1b[1;03;31m'+'Min corr - raw / rigid / pw_rigid: ' 
+                  + str(['{:.2f}'.format(i) for i in corr_min])+ '\x1b[0m')
+        else:
+            print('Min corr - raw / rigid / pw_rigid: ' + str(['{:.2f}'.format(i) for i in corr_min]))
+        if crispness[0] > crispness[1] or crispness[0] > crispness[2]:
+            print('\x1b[1;03;31m'+'Crispness - raw / rigid / pw_rigid: ' 
+                  + str(['{:.0f}'.format(i) for i in crispness]) + '\x1b[0m')
+        else:
+            print('Crispness - raw / rigid / pw_rigid: ' + str(['{:.0f}'.format(i) for i in crispness]))
+        if norms[0] < norms[1] or norms[0] < norms[2]:
+            print('\x1b[1;03;31m'+'Norms - raw / rigid / pw_rigid: ' 
+                  + str(['{:.0f}'.format(i) for i in norms]) + '\x1b[0m')
+        else:
+            print('Norms - raw / rigid / pw_rigid: ' + str(['{:.2f}'.format(i) for i in norms]))
+    
+    elif len(corr_mean) == 2:
+        if corr_mean[0] > corr_mean[1]:
+            print('\x1b[1;03;31m' + 'Mean corr - raw / rigid: ' + str(['{:.2f}'.format(i) for i in corr_mean]) + '\x1b[0m')
+        else:
+            print('Mean corr - raw / rigid: ' + str(['{:.2f}'.format(i) for i in corr_mean]))
+
+        if corr_min[0] > corr_min[1]:
+            print('\x1b[1;03;31m'+'Min corr - raw / rigid: ' 
+                  + str(['{:.2f}'.format(i) for i in corr_min])+ '\x1b[0m')
+        else:
+            print('Min corr - raw / rigid: ' + str(['{:.2f}'.format(i) for i in corr_min]))
+        if crispness[0] > crispness[1]:
+            print('\x1b[1;03;31m'+'Crispness - raw / rigid: ' 
+                  + str(['{:.0f}'.format(i) for i in crispness]) + '\x1b[0m')
+        else:
+            print('Crispness - raw / rigid: ' + str(['{:.0f}'.format(i) for i in crispness]))
+        if norms[0] < norms[1]:
+            print('\x1b[1;03;31m'+'Norms - raw / rigid: ' 
+                  + str(['{:.0f}'.format(i) for i in norms]) + '\x1b[0m')
+        else:
+            print('Norms - raw / rigid: ' + str(['{:.2f}'.format(i) for i in norms]))
 
 
 def writeJsonBadFrames(criterion, thresh, frame_ix, mc, mc_type, data_folder):
