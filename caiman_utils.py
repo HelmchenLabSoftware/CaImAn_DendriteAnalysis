@@ -143,7 +143,13 @@ def removeBadFrames(fname, trial_index, Yr, dims, remove_bad_frames, data_folder
         print(images.shape)
         # make sure movie is not negative
         add_to_movie = - np.min(images)
-        fname_new = cm.save_memmap([images], base_name=os.path.join(data_folder, 'removedFrames'), 
+#         fname_new = cm.save_memmap([images], base_name=os.path.join(data_folder, 'removedFrames'), 
+#                                    add_to_movie=add_to_movie, order='C')
+        
+        base_name = os.path.basename(fname)
+        base_name = base_name[:base_name.rfind('__')] + '_remFrames'
+    
+        fname_new = cm.save_memmap([images], base_name=os.path.join(data_folder, base_name), 
                                    add_to_movie=add_to_movie, order='C')
         Yr, dims, T = cm.load_memmap(fname_new)
         images = np.reshape(Yr.T, [T] + list(dims), order='F')
