@@ -125,37 +125,41 @@ def getBadFramesByTrial(bad_frames, trial_index):
     return bad_frames_by_trial
 
 
-def removeBadFrames(fname, trial_index, Yr, dims, remove_bad_frames, data_folder):
+def getBadFrames(fname):
+    """
+    
+    """
+    
+    bad_frames = json.load(open(fname.replace('.mmap','badFrames.json')))
+    return np.array(bad_frames['frames'], dtype='int64')
+
+
+def removeBadFrames(fname, trial_index, Yr, dims, bad_frames, data_folder):
     """
     
     """
 
-    bad_frames = np.array([])
     bad_frames_by_trial = dict()
-    if remove_bad_frames:
-        bad_frames = json.load(open(fname.replace('.mmap','badFrames.json')))
-        bad_frames = np.array(bad_frames['frames'])
-        bad_frames_by_trial = getBadFramesByTrial(bad_frames, trial_index)
-        Yr = np.delete(Yr, bad_frames, axis=1)
-        trial_index = np.delete(trial_index, bad_frames, axis=0)
-        T = Yr.shape[1]
-        images = np.reshape(Yr.T, [T] + list(dims), order='F')
-        print(images.shape)
-        # make sure movie is not negative
-        add_to_movie = - np.min(images)
-#         fname_new = cm.save_memmap([images], base_name=os.path.join(data_folder, 'removedFrames'), 
-#                                    add_to_movie=add_to_movie, order='C')
-        
-        base_name = os.path.basename(fname)
-        base_name = base_name[:base_name.rfind('__')] + '_remFrames'
     
-        fname_new = cm.save_memmap([images], base_name=os.path.join(data_folder, base_name), 
-                                   add_to_movie=add_to_movie, order='C')
-        Yr, dims, T = cm.load_memmap(fname_new)
-        images = np.reshape(Yr.T, [T] + list(dims), order='F')
-        Y = np.reshape(Yr, dims + (T,), order='F')
-        print('Deleted %1d frames. Saved to new file %s.' % (len(bad_frames), os.path.basename(fname_new)))
-        print('Deleted frames:')
-        print(bad_frames)
+    bad_frames_by_trial = getBadFramesByTrial(bad_frames, trial_index)
+    Yr = np.delete(Yr, bad_frames, axis=1)
+    trial_index = np.delete(trial_index, bad_frames, axis=0)
+    T = Yr.shape[1]
+    images = np.reshape(Yr.T, [T] + list(dims), order='F')
+    print(images.shape)
+    # make sure movie is not negative
+    add_to_movie = - np.min(images)
         
-    return bad_frames, images, Y, fname_new
+    base_name = os.path.basename(fname)
+    base_name = base_name[:base_name.rfind('__')] + '_remFrames'
+    
+    fname_new = cm.save_memmap([images], base_name=os.path.join(data_folder, base_name), 
+                               add_to_movie=add_to_movie, order='C')
+    Yr, dims, T = cm.load_memmap(fname_new)
+    images = np.reshape(Yr.T, [T] + list(dims), order='F')
+    Y = np.reshape(Yr, dims + (T,), order='F')
+    print('Deleted %1d frames. Saved to new file %s.' % (len(bad_frames), os.path.basename(fname_new)))
+    print('Deleted frames:')
+    print(bad_frames)
+
+    return images, Y, fname_new
