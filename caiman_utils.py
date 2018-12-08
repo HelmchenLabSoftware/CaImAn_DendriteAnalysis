@@ -162,4 +162,4 @@ def removeBadFrames(fname, trial_index, Yr, dims, bad_frames, data_folder):
     print('Deleted frames:')
     print(bad_frames)
 
-    return images, Y, fname_new
+    return images, Y, fname_new, bad_frames_by_trial, trial_index

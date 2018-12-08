@@ -1,6 +1,10 @@
 import numpy as np
 from tifffile import imread, imsave
-from bokeh.models import HoverTool
+
+# Bokeh imports
+from bokeh.plotting import Figure, show
+from bokeh.models import Range1d, CrosshairTool, HoverTool, Legend
+from bokeh.models.sources import ColumnDataSource
 
 def mosaicToStack(tiff_file, n_planes, x_crop):
     """
@@ -81,3 +85,65 @@ def getHover():
         ("trial", "@trial_idx (@trial_name)"),
     ]
     return hover
+
+
+def plotTimeseries(p, t, y, legend=None, stack=True, xlabel='', ylabel='', output_backend='canvas', 
+                   trial_index=None, trial_names_frames=None):
+    """
+    Plot a timeseries in Figure p using the Bokeh library
+    
+    Input arguments:
+    p ... Bokeh figure
+    t ... 1d time axis vector (numpy array)
+    y ... 2d data numpy array (number of traces x time)
+    legend ... list of items to be used as figure legend
+    stack ... whether to stack traces or nor (True / False)
+    xlabel ... label for x-axis
+    ylabel ... label for y-axis
+    output_backend ... 'canvas' or 'svg'
+    trial_index ... trial index for each frame
+    trial_names_frames ... trial name for each frame
+    """
+    
+    colors_list = ['red', 'green', 'blue', 'yellow', 'cyan', 'orange', 'magenta', 'black', 'gray']
+    p.add_tools(CrosshairTool(), getHover())
+    
+    offset = 0
+    for i in range(y.shape[0]):
+        if len(colors_list) < i+1:
+            colors_list = colors_list + colors_list
+        
+        plot_trace = y[i, :]
+        if stack:
+            plot_trace = plot_trace - min(plot_trace) + offset
+            offset = max(plot_trace)
+        
+        # create ColumnDataSource
+        data = {
+            'x': t, 
+            'y': plot_trace,
+            'trial_idx': trial_index,
+            'trial_name': trial_names_frames
+        }
+        data_source = ColumnDataSource(data)
+
+        # add line
+        p.line('x', 'y', source=data_source, line_width=2, legend=legend[i], color=colors_list[i])
+        
+#     p.legend.location = (0,-30)
+    p.legend.click_policy="hide"
+    
+    # format plot
+    p.xaxis.axis_label = xlabel
+    p.yaxis.axis_label = ylabel
+    
+    p.x_range = Range1d(np.min(t), np.max(t))
+    
+    p.background_fill_color = None
+    p.border_fill_color = None
+    
+    p.output_backend = output_backend
+
+    show(p)
+    
+    return p
