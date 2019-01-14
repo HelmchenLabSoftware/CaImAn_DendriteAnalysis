@@ -2,4 +2,4 @@
 
 source activate caiman
 
-ipcluster start -n $1
+ipcluster start --daemonize -n $1
