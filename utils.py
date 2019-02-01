@@ -1,3 +1,5 @@
+import os
+import shutil
 import numpy as np
 from tifffile import imread, imsave
 
@@ -5,6 +7,13 @@ from tifffile import imread, imsave
 from bokeh.plotting import Figure, show
 from bokeh.models import Range1d, CrosshairTool, HoverTool, Legend
 from bokeh.models.sources import ColumnDataSource
+
+def copyDirectory(session, temp_data_folder):
+    """
+    Todo: document
+    """
+    return shutil.copytree(session, os.path.join(temp_data_folder, os.path.basename(session)))
+    
 
 def mosaicToStack(tiff_file, n_planes, x_crop):
     """
