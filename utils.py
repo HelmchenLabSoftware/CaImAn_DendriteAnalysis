@@ -13,7 +13,14 @@ def copyDirectory(session, temp_data_folder):
     Todo: document
     """
     return shutil.copytree(session, os.path.join(temp_data_folder, os.path.basename(session)))
-    
+
+
+def copyFiles(file, dest_folder):
+    """
+    Copy a file to a destination folder 
+    """
+    return shutil.copy2(file, dest_folder)
+
 
 def mosaicToStack(tiff_file, n_planes, x_crop):
     """
