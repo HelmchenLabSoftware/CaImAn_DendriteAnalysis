@@ -1,3 +1,9 @@
+"""
+
+Collection of modified plotting utilities from the CaImAn analysis suite. 
+
+"""
+
 from builtins import str
 from builtins import range
 from past.utils import old_div
@@ -21,6 +27,7 @@ from warnings import warn
 
 import bokeh
 import bokeh.plotting as bpl
+from bokeh.layouts import gridplot
 from bokeh.models import CustomJS, ColumnDataSource, Range1d
 
 from caiman.base.rois import com
@@ -168,6 +175,16 @@ def nb_view_patches(Yr, A, C, b, f, d1, d2, YrA=None, image_neurons=None, thr=0.
         image_neurons = A.mean(1).reshape((d1, d2), order='F')
 
     coors = get_contours(A, (d1, d2), thr)
+    # adjust coordinates
+    for ix, cor in enumerate(coors):
+        patch = cor['coordinates']
+        # find and remove NaN coordinates
+        nan_ix = np.unique(np.argwhere(np.isnan(patch))[:,0])
+        patch = np.delete(patch, nan_ix, 0)
+        # flip rows upside down
+        patch[:,1] = d1 - patch[:,1]
+        coors[ix]['coordinates'] = patch
+    
     cc1 = [cor['coordinates'][:, 0] for cor in coors]
     cc2 = [cor['coordinates'][:, 1] for cor in coors]
     c1 = cc1[0]
@@ -218,16 +235,26 @@ def nb_view_patches(Yr, A, C, b, f, d1, d2, YrA=None, image_neurons=None, thr=0.
                                  title="Neuron Number", callback=callback)
     xr = Range1d(start=0, end=image_neurons.shape[1])
     yr = Range1d(start=image_neurons.shape[0], end=0)
-    plot1 = bpl.figure(x_range=xr, y_range=yr, plot_width=300, plot_height=300)
+    plot1 = bpl.figure(plot_width=image_neurons.shape[1]*2, plot_height=image_neurons.shape[0]*2, toolbar_location="below")
 
-    plot1.image(image=[image_neurons[::-1, :]], x=0,
-                y=image_neurons.shape[0], dw=d2, dh=d1, palette=grayp)
+#     plot1.image(image=[image_neurons[::-1, :]], x=0,
+#                 y=image_neurons.shape[0], dw=d2, dh=d1, palette=grayp)
+    
+    plot1.image(image=[np.flipud(image_neurons)], x=0, y=0, dw=image_neurons.shape[1], dh=image_neurons.shape[0], palette=grayp)
+    
     plot1.patch('c1', 'c2', alpha=0.6, color='purple',
                 line_width=2, source=source2)
 
-    if Y_r.shape[0] > 1:
-        bpl.show(bokeh.layouts.layout([[slider], [bokeh.layouts.row(plot1, plot)]]))
-    else:
-        bpl.show(bokeh.layouts.row(plot1, plot))
-
-#     return Y_r
+    plot1.x_range = Range1d(0, image_neurons.shape[1])
+    plot1.y_range = Range1d(0, image_neurons.shape[0])
+    
+    grid = gridplot([[plot1, None], [plot, slider]], sizing_mode='fixed', toolbar_location='left')
+    
+    bpl.show(grid)
+    
+    return coors
+    
+#     if Y_r.shape[0] > 1:
+#         bpl.show(bokeh.layouts.layout([[slider], [bokeh.layouts.row(plot1, plot)]]))
+#     else:
+#         bpl.show(bokeh.layouts.row(plot1, plot))
