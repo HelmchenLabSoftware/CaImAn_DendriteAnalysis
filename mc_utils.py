@@ -74,17 +74,24 @@ def computeMetrics(mc, swap_dim, winsize, resize_fact_flow, iterations):
     cm.motion_correction.compute_metrics_motion_correction(mc.fname[0], final_size[0], final_size[1],
                                                            swap_dim, winsize=winsize, play_flow=False, 
                                                            resize_fact_flow=resize_fact_flow, iterations=iterations)
+    
+    # delete the created file
+    os.remove(mc.fname[0][:-4] + '_metrics.npz')
 
     tmpl_rig, corr_rig, flows_rig, norms_rig, crispness_rig = \
     cm.motion_correction.compute_metrics_motion_correction(mc.fname_tot_rig[0], final_size[0], final_size[1],
                                                            swap_dim, winsize=winsize, play_flow=False, 
                                                            resize_fact_flow=resize_fact_flow, iterations=iterations)
+    # delete the created file
+    os.remove(mc.fname_tot_rig[0][:-4] + '_metrics.npz')
 
     if mc.pw_rigid:
         tmpl_els, corr_els, flows_els, norms_els, crispness_els = \
         cm.motion_correction.compute_metrics_motion_correction(mc.fname_tot_els[0], final_size[0], final_size[1],
                                                                swap_dim, winsize=winsize, play_flow=False, 
                                                                resize_fact_flow=resize_fact_flow, iterations=iterations)
+        # delete the created file
+        os.remove(mc.fname_tot_els[0][:-4] + '_metrics.npz')
     else:
         tmpl_els = corr_els = flows_els = norms_els = crispness_els = None
     
@@ -244,7 +251,7 @@ def printMetrics(corr_mean, corr_min, crispness, norms):
             print('Norms - raw / rigid: ' + str(['{:.2f}'.format(i) for i in norms]))
 
 
-def writeJsonBadFrames(criterion, thresh, frame_ix, mc, mc_type, data_folder):
+def writeJsonBadFrames(criterion, thresh, frame_ix, mmap_file, mc_type, data_folder):
     """
     Todo: document me
     
@@ -253,9 +260,9 @@ def writeJsonBadFrames(criterion, thresh, frame_ix, mc, mc_type, data_folder):
         "threshold:": thresh, 
         "frames": frame_ix}
     if mc_type == 'els':
-        json_fname = mc.fname_tot_els[0].replace('.mmap','') + 'badFrames' + '.json'
+        json_fname = mmap_file.replace('.mmap','') + 'badFrames' + '.json'
     elif mc_type == 'rig':
-        json_fname = mc.fname_tot_rig[0].replace('.mmap','') + 'badFrames' + '.json'
+        json_fname = mmap_file.replace('.mmap','') + 'badFrames' + '.json'
     with open(os.path.join(data_folder, json_fname), 'w') as fid:
         json.dump(exclude_info, fid)
-    print('Created JSON metadata file %s' % (json_fname))
+    print('Created JSON bad frames file %s' % (json_fname))
