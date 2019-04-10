@@ -13,7 +13,6 @@ import cv2
 from IPython.display import HTML
 from math import sqrt, ceil
 import matplotlib as mpl
-import matplotlib.cm as cm
 from matplotlib.widgets import Slider
 import numpy as np
 import pylab as pl
@@ -87,29 +86,31 @@ def nb_view_patches(Yr, idx, A, C, b, f, d1, d2, YrA=None, image_neurons=None, d
     source_img = ColumnDataSource(data=dict(img=[component_images[0]]))
     source_img_ = ColumnDataSource(data=dict(img=component_images))
     
-    callback = CustomJS(args=dict(source_line=source_line, source_line_=source_line_, source_img=source_img, source_img_=source_img_), code="""
-        var line_data = source_line.data;
-        var line_data_ = source_line_.data;
-        var img_data = source_img.data;
-        var img_data_ = source_img_.data;
-        var f = cb_obj.value - 1;
-        
-        var x = line_data['x'];
-        var y = line_data['y'];
-        var y2 = line_data['y2'];
-        
-        for (i = 0; i < x.length; i++) {
-                y[i] = line_data_['z'][i+f*x.length];
-                y2[i] = line_data_['z2'][i+f*x.length];
-            }
-            
-        img = img_data_['img']
-        
-        source_img.data['img'] = [img[f]]
-        
-        source_line.change.emit();
-        source_img.change.emit();
-    """)
+    if Y_r.shape[0] > 1:
+    
+        callback = CustomJS(args=dict(source_line=source_line, source_line_=source_line_, source_img=source_img, source_img_=source_img_), code="""
+            var line_data = source_line.data;
+            var line_data_ = source_line_.data;
+            var img_data = source_img.data;
+            var img_data_ = source_img_.data;
+            var f = cb_obj.value - 1;
+
+            var x = line_data['x'];
+            var y = line_data['y'];
+            var y2 = line_data['y2'];
+
+            for (i = 0; i < x.length; i++) {
+                    y[i] = line_data_['z'][i+f*x.length];
+                    y2[i] = line_data_['z2'][i+f*x.length];
+                }
+
+            img = img_data_['img']
+
+            source_img.data['img'] = [img[f]]
+
+            source_line.change.emit();
+            source_img.change.emit();
+        """)
     
     plot = bpl.figure(plot_width=600, plot_height=300)
     plot.line('x', 'y', source=source_line, line_width=1, line_alpha=0.6)
@@ -123,9 +124,11 @@ def nb_view_patches(Yr, idx, A, C, b, f, d1, d2, YrA=None, image_neurons=None, d
     
     plot1.image('img', source=source_img, x=0, y=0, dw=image_neurons.shape[1], dh=image_neurons.shape[0], palette=cmap)
     
-    slider = bokeh.models.Slider(start=1, end=Y_r.shape[0], value=1, step=1, title="Neuron Number", callback=callback)
-    
-    grid = gridplot([[plot1, None], [plot, slider]], sizing_mode='fixed', toolbar_location='left')
+    if Y_r.shape[0] > 1:
+        slider = bokeh.models.Slider(start=1, end=Y_r.shape[0], value=1, step=1, title="Neuron Number", callback=callback)
+        grid = gridplot([[plot1, None], [plot, slider]], sizing_mode='fixed', toolbar_location='left')
+    else:
+        grid = gridplot([[plot1, None], [plot, None]], sizing_mode='fixed', toolbar_location='left')
     
     bpl.show(grid)
     
